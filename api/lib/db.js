@@ -40,7 +40,7 @@ function client() {
     prepare: false,      // required for Supabase transaction-mode pooler (6543)
     max: 1,
     idle_timeout: 20,
-    connect_timeout: 10,
+    connect_timeout: 5,
     ssl: 'require',
   });
   return _sql;
