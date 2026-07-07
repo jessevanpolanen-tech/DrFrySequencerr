@@ -7,7 +7,6 @@
 // at:  https://<your-backend>/api/send
 import { sendEmail, fromLine } from '../lib/resend.js';
 
-export const config = { runtime: 'edge' };
 
 const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || '*';
 const cors = {
