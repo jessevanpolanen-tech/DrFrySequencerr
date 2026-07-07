@@ -17,7 +17,7 @@ function authorized(req) {
   return auth === `Bearer ${secret}` || url.searchParams.get('key') === secret;
 }
 
-export const config = { runtime: 'edge' };
+export const config = { runtime: 'nodejs' };
 
 export default async function handler(req) {
   if (!authorized(req)) return json({ error: 'unauthorized' }, 401);
