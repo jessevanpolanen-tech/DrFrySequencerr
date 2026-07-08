@@ -34,7 +34,6 @@ export default async function handler(req, res) {
       to,
       subject: p.subject,
       text: p.text || '',
-      replyTo: p.replyTo,
       tags: [{ name: 'kind', value: 'manual-compose' }],
     });
     res.status(200).json({ ok: true, id: result.id, from: fromLine() });
