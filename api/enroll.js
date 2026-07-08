@@ -1,14 +1,9 @@
 // ── Enroll a lead into a sequence ───────────────────────────────────
 // POST /api/enroll  { email, name?, org?, role?, phone?, note?, sequenceId? }
-// Called by the dashboard's "Add cold outreach lead" button (and anything else).
-// Upserts the lead, starts the sequence, and fires step 0 on the next cron tick.
-//
 // Node.js classic (req, res) handler.
 import { upsertLead, createEnrollment, logEvent } from '../lib/db.js';
-import { notifyNewLead } from '../lib/resend.js';
-// ...after the enrolled logEvent, before res.status(200):
-if (lead._inserted) { try { await notifyNewLead(lead, 'dashboard'); } catch (e) {} } 
 import { getSequence, dueAtForStep } from '../lib/sequences.js';
+import { notifyNewLead } from '../lib/resend.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -45,6 +40,11 @@ export default async function handler(req, res) {
     const firstDueAt = dueAtForStep(enrolledAt, seq, 0);
     const enrollment = await createEnrollment({ leadId: lead.id, email, sequenceId, firstDueAt });
     await logEvent({ leadId: lead.id, enrollmentId: enrollment.id, email, type: 'enrolled', meta: { sequenceId } });
+
+    // Notify the operator on a genuinely new lead (not a re-enroll).
+    if (lead._inserted) {
+      try { await notifyNewLead(lead, 'dashboard'); } catch (e) {}
+    }
 
     res.status(200).json({ ok: true, leadId: lead.id, enrollmentId: enrollment.id, sequenceId });
   } catch (err) {
