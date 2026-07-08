@@ -44,6 +44,10 @@ export default async function handler(req, res) {
       enrollment = await createEnrollment({ leadId: lead.id, email, sequenceId: seq.id, firstDueAt });
     }
 
+    import { notifyNewLead } from '../lib/resend.js';
+// ...after the `if (body.enroll === true) {...}` block, before res.status(200):
+if (lead._inserted) { try { await notifyNewLead(lead, body.source || 'website'); } catch (e) {} }
+
     res.status(200).json({ ok: true, lead, enrollment });
   } catch (err) {
     res.status(500).json({ error: String((err && err.message) || err) });
