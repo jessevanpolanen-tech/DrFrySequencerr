@@ -5,6 +5,9 @@
 //
 // Node.js classic (req, res) handler.
 import { upsertLead, createEnrollment, logEvent } from '../lib/db.js';
+import { notifyNewLead } from '../lib/resend.js';
+// ...after the enrolled logEvent, before res.status(200):
+if (lead._inserted) { try { await notifyNewLead(lead, 'dashboard'); } catch (e) {} } 
 import { getSequence, dueAtForStep } from '../lib/sequences.js';
 
 export const config = { runtime: 'nodejs' };
