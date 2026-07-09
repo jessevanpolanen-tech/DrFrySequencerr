@@ -9,6 +9,7 @@
 // Node.js classic (req, res) handler. CORS open (*) for the website origin.
 import { upsertLead, createEnrollment, logEvent } from '../lib/db.js';
 import { SEQUENCES } from '../lib/sequences.js';
+import { notifyNewLead } from '../lib/resend.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -44,9 +45,10 @@ export default async function handler(req, res) {
       enrollment = await createEnrollment({ leadId: lead.id, email, sequenceId: seq.id, firstDueAt });
     }
 
-    import { notifyNewLead } from '../lib/resend.js';
-// ...after the `if (body.enroll === true) {...}` block, before res.status(200):
-if (lead._inserted) { try { await notifyNewLead(lead, body.source || 'website'); } catch (e) {} }
+    // Notify the operator on a genuinely new lead (not a repeat submission).
+    if (lead._inserted) {
+      try { await notifyNewLead(lead, body.source || 'website'); } catch (e) {}
+    }
 
     res.status(200).json({ ok: true, lead, enrollment });
   } catch (err) {
