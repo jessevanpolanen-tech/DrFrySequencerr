@@ -1,11 +1,8 @@
 // ── Read the pipeline ───────────────────────────────────────────────
 // GET /api/leads  → leads with their live enrollment status + click count.
-// Lets the dashboard show REAL sequence state instead of localStorage.
-// Read-only; CORS open for the static dashboard.
-//
-// Node.js classic (req, res) handler — required on Vercel's Node runtime so
-// the response completes (the Web/Fetch `Response` style can hang here).
-import { sql } from '../lib/db.js';
+// DELETE /api/leads { confirm: 'DELETE_ALL_LEADS' } → wipes every lead.
+// Node.js classic (req, res) handler.
+import { sql, deleteAllLeads } from '../lib/db.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -13,10 +10,25 @@ const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || '*';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', ALLOW_ORIGIN);
-  res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, DELETE, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+
+  if (req.method === 'DELETE') {
+    try {
+      const body = typeof req.body === 'object' && req.body ? req.body : JSON.parse(req.body || '{}');
+      if (body.confirm !== 'DELETE_ALL_LEADS') {
+        res.status(400).json({ error: 'missing confirmation' });
+        return;
+      }
+      const deleted = await deleteAllLeads();
+      res.status(200).json({ ok: true, deleted });
+    } catch (err) {
+      res.status(500).json({ error: String((err && err.message) || err) });
+    }
+    return;
+  }
 
   try {
     const rows = await sql`
@@ -34,7 +46,6 @@ export default async function handler(req, res) {
 
     res.status(200).json({ leads: rows });
   } catch (err) {
-    // Surface the real reason instead of an opaque 500 page.
     res.status(500).json({ error: String((err && err.message) || err) });
   }
 }
