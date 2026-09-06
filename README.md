@@ -11,7 +11,8 @@ your Outlook, stops on reply/bounce/unsubscribe, and tracks clicks.
 
 | File | Role |
 |---|---|
-| `db/schema.sql` | Tables: `leads`, `enrollments`, `events`. Run once. |
+| `db/schema.sql` | Tables: `leads`, `enrollments`, `events` (+ the `tenant` column). Run once. |
+| `db/fix-tenant-drfry.sql` | One-time fix when the DB is shared with FahCel: re-tags Dr. Fry leads that were saved as `tenant:"fahcel"` back to `drfry`. Review its STEP 0 query first. |
 | `api/enroll.js` | `POST /api/enroll` — add a lead + start a sequence. |
 | `api/send.js` | `POST /api/send` — send one email now (dashboard Compose → Send). |
 | `api/cron/tick.js` | Runs hourly (Vercel Cron). Sends due steps, advances each lead. |
@@ -57,6 +58,7 @@ vercel --prod
 | `POSTGRES_URL` | Supabase **Transaction-pooler** string (`...pooler.supabase.com:6543/postgres`); auto-set by Vercel Postgres |
 | `FROM_EMAIL` | `jesse@contact.drfry.nl` |
 | `FROM_NAME` | `Dr. Fry` |
+| `TENANT` | `drfry` — **required** when the database is shared with FahCel. Scopes capture, dashboard reads, the wipe, and the cron so this deployment only ever touches its own brand's leads. Defaults to `drfry` if unset. |
 | `REPLY_TO` | `replies@contact.drfry.nl` *(see step 5 — must be an inbound address for reply-detection)* |
 | `FORWARD_TO` | `jesse@drfry.nl` (your Outlook) |
 | `CRON_SECRET` | any long random string |
