@@ -49,3 +49,14 @@ create table if not exists events (
 );
 
 create index if not exists events_lead_idx on events (lead_id, created_at desc);
+
+-- Self-healing: guarantee the unique index the capture-lead / enroll upsert
+-- targets (on conflict (email)), even on older databases.
+create unique index if not exists leads_email_key on leads (email);
+
+-- Multi-tenant: Dr. Fry and FahCel share this database; every read, wipe and
+-- capture is scoped by this tag. Added via ALTER so an existing table gets it
+-- too. On the shared DB the column already exists (FahCel added it first), so
+-- this is a no-op there; the app always writes the tenant explicitly regardless.
+alter table leads add column if not exists tenant text not null default 'drfry';
+create index if not exists leads_tenant_idx on leads (tenant, created_at desc);

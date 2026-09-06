@@ -1,7 +1,7 @@
 // ── Enroll a lead into a sequence ───────────────────────────────────
 // POST /api/enroll  { email, name?, org?, role?, phone?, note?, sequenceId? }
 // Node.js classic (req, res) handler.
-import { upsertLead, createEnrollment, logEvent } from '../lib/db.js';
+import { upsertLead, createEnrollment, logEvent, DEFAULT_TENANT } from '../lib/db.js';
 import { getSequence, dueAtForStep } from '../lib/sequences.js';
 import { notifyNewLead } from '../lib/resend.js';
 
@@ -27,6 +27,8 @@ export default async function handler(req, res) {
     const seq = getSequence(sequenceId);
     if (!seq) { res.status(400).json({ error: 'unknown-sequence' }); return; }
 
+    const tenant = (payload.tenant || req.query?.tenant || DEFAULT_TENANT).toString().trim().toLowerCase();
+
     const lead = await upsertLead({
       email,
       name: payload.name || '',
@@ -34,12 +36,13 @@ export default async function handler(req, res) {
       role: payload.role || 'Cold outreach',
       phone: payload.phone || '',
       note: payload.note || '',
+      tenant,
     });
 
     const enrolledAt = new Date();
     const firstDueAt = dueAtForStep(enrolledAt, seq, 0);
     const enrollment = await createEnrollment({ leadId: lead.id, email, sequenceId, firstDueAt });
-    await logEvent({ leadId: lead.id, enrollmentId: enrollment.id, email, type: 'enrolled', meta: { sequenceId } });
+    await logEvent({ leadId: lead.id, enrollmentId: enrollment.id, email, type: 'enrolled', meta: { sequenceId, tenant } });
 
     // Notify the operator on a genuinely new lead (not a re-enroll).
     if (lead._inserted) {
