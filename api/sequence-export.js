@@ -18,6 +18,21 @@ export const config = { runtime: 'nodejs' };
 
 const ALLOW_ORIGIN = process.env.ALLOW_ORIGIN || '*';
 
+// Gate the export the same way the cron is gated. The marketing site rewrites
+// /api/* to this deployment, so without this anyone could pull the full
+// outreach copy from drfry.nl/api/sequence-export. Set EXPORT_SECRET in Vercel;
+// then callers must pass ?key=<secret> or an `Authorization: Bearer <secret>`
+// header. Falls back to CRON_SECRET so you can reuse one key. If neither is set
+// the endpoint stays open (dev only — set a secret in prod).
+function authorized(req) {
+  const secret = process.env.EXPORT_SECRET || process.env.CRON_SECRET;
+  if (!secret) return true;
+  const auth = req.headers.authorization || '';
+  const host = req.headers.host || 'localhost';
+  const url = new URL(req.url, `https://${host}`);
+  return auth === `Bearer ${secret}` || url.searchParams.get('key') === secret;
+}
+
 // A stand-in "lead" whose fields are merge tags rather than real values, so
 // the rendered subject/body come out plug-and-play. `first(l.name)` in
 // sequences.js splits on whitespace and takes the first word, so a single
@@ -138,6 +153,7 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') { res.status(204).end(); return; }
   if (req.method !== 'GET') { res.status(405).json({ error: 'method' }); return; }
+  if (!authorized(req)) { res.status(401).json({ error: 'unauthorized' }); return; }
 
   try {
     // One sequence if asked for, otherwise every defined sequence.
