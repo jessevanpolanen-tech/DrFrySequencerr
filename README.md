@@ -20,10 +20,27 @@ your Outlook, stops on reply/bounce/unsubscribe, and tracks clicks.
 | `api/webhooks/resend-inbound.js` | A reply → stop sequence **and** forward to your Outlook. |
 | `api/unsubscribe.js` | The opt-out link in every email footer. |
 | `api/leads.js` | `GET /api/leads` — read live pipeline state (for the dashboard). |
+| `api/sequence-export.js` | `GET /api/sequence-export` — plug-and-play export of the full sequence(s) with merge tags, as JSON / Markdown / plain text. |
 | `lib/sequences.js` | Your sequences + copy. Edit here to change cadence/wording. |
 
 Default sequence `founding-outreach`: **Day 0** intro → **Day 3** case study →
 **Day 7** ROI → **Day 14** break-up. Change it in `lib/sequences.js`.
+
+### Export the sequence (plug & play)
+Grab the whole sequence as ready-to-paste copy — no lead, no DB, no auth:
+```bash
+# Markdown (nice to read / paste into a doc)
+curl "https://dr-fry-sequencerr.vercel.app/api/sequence-export?format=md"
+# plain text
+curl "https://dr-fry-sequencerr.vercel.app/api/sequence-export?format=txt"
+# structured JSON (default) — or one sequence: &sequenceId=founding-outreach
+curl "https://dr-fry-sequencerr.vercel.app/api/sequence-export"
+```
+Every email comes out with tool-agnostic merge tags — `{{first_name}}`,
+`{{company}}`, `{{role}}`, `{{unsubscribe_url}}` — so you can drop it straight
+into Instantly, Smartlead, Lemlist, Mailchimp, or hand it to a colleague. The
+copy is read live from `lib/sequences.js`, so the export never drifts from what
+actually sends.
 
 ## Deploy (≈20 min)
 
