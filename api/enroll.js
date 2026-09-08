@@ -2,7 +2,7 @@
 // POST /api/enroll  { email, name?, org?, role?, phone?, note?, sequenceId? }
 // Node.js classic (req, res) handler.
 import { upsertLead, createEnrollment, logEvent, DEFAULT_TENANT } from '../lib/db.js';
-import { getSequence, dueAtForStep } from '../lib/sequences.js';
+import { getSequence, dueAtForStep, defaultSequenceId } from '../lib/sequences.js';
 import { notifyNewLead } from '../lib/resend.js';
 
 export const config = { runtime: 'nodejs' };
@@ -23,11 +23,12 @@ export default async function handler(req, res) {
     const email = (payload.email || '').trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { res.status(400).json({ error: 'invalid-email' }); return; }
 
-    const sequenceId = payload.sequenceId || 'founding-outreach';
-    const seq = getSequence(sequenceId);
-    if (!seq) { res.status(400).json({ error: 'unknown-sequence' }); return; }
-
     const tenant = (payload.tenant || req.query?.tenant || DEFAULT_TENANT).toString().trim().toLowerCase();
+
+    // Named sequence, or this tenant's default founding sequence.
+    const sequenceId = payload.sequenceId || defaultSequenceId(tenant);
+    const seq = sequenceId ? getSequence(sequenceId) : null;
+    if (!seq) { res.status(400).json({ error: 'unknown-sequence' }); return; }
 
     const lead = await upsertLead({
       email,

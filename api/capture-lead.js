@@ -8,7 +8,7 @@
 //
 // Node.js classic (req, res) handler. CORS open (*) for the website origin.
 import { upsertLead, createEnrollment, logEvent, DEFAULT_TENANT } from '../lib/db.js';
-import { SEQUENCES } from '../lib/sequences.js';
+import { getSequence, defaultSequenceId } from '../lib/sequences.js';
 import { notifyNewLead } from '../lib/resend.js';
 
 export const config = { runtime: 'nodejs' };
@@ -43,13 +43,17 @@ export default async function handler(req, res) {
     await logEvent({ leadId: lead.id, email, type: 'captured', meta: { source: body.source || 'website', tenant } });
 
     let enrollment = null;
-    // Enroll only when asked. Honor an explicit sequenceId; default stays OFF
-    // (people who contacted YOU shouldn't get cold outreach).
+    // Enroll only when asked. Honor an explicit sequenceId, else this tenant's
+    // default founding sequence. Default stays OFF (people who contacted YOU
+    // shouldn't get cold outreach). The lead is captured regardless; if no valid
+    // sequence resolves we simply skip enrollment rather than pick a wrong one.
     if (body.enroll === true || body.sequenceId) {
-      const seq = SEQUENCES[body.sequenceId] || SEQUENCES['founding-outreach'];
-      const firstDueAt = new Date(Date.now() + (seq.steps[0].dayOffset || 0) * 86400000);
-      enrollment = await createEnrollment({ leadId: lead.id, email, sequenceId: seq.id, firstDueAt });
-      await logEvent({ leadId: lead.id, enrollmentId: enrollment.id, email, type: 'enrolled', meta: { sequenceId: seq.id, source: body.source || 'website', tenant } });
+      const seq = getSequence(body.sequenceId) || getSequence(defaultSequenceId(tenant));
+      if (seq) {
+        const firstDueAt = new Date(Date.now() + (seq.steps[0].dayOffset || 0) * 86400000);
+        enrollment = await createEnrollment({ leadId: lead.id, email, sequenceId: seq.id, firstDueAt });
+        await logEvent({ leadId: lead.id, enrollmentId: enrollment.id, email, type: 'enrolled', meta: { sequenceId: seq.id, source: body.source || 'website', tenant } });
+      }
     }
 
     // Notify the operator on a genuinely new lead (not a repeat submission).

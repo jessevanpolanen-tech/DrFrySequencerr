@@ -23,8 +23,12 @@ your Outlook, stops on reply/bounce/unsubscribe, and tracks clicks.
 | `api/sequence-export.js` | `GET /api/sequence-export` — plug-and-play export of the full sequence(s) with merge tags, as JSON / Markdown / plain text. |
 | `lib/sequences.js` | Your sequences + copy. Edit here to change cadence/wording. |
 
-Default sequence `founding-outreach`: **Day 0** intro → **Day 3** case study →
-**Day 7** ROI → **Day 14** break-up. Change it in `lib/sequences.js`.
+Sequences are **namespaced by brand** in `lib/sequences.js` (this one codebase
+serves every brand's deployment): `drfry-founding`, `fahcel-founding`,
+`fahcel-playbook`. Each is **Day 0** intro → **Day 3** case study → **Day 7**
+ROI → **Day 14** break-up (the playbook nurture is 3 steps). When a caller names
+no `sequenceId`, enroll/capture fall back to `<tenant>-founding`. Change copy or
+cadence in `lib/sequences.js`.
 
 ### Export the sequence (plug & play)
 Grab the whole sequence as ready-to-paste copy — no lead, no DB, no auth:
@@ -33,7 +37,7 @@ Grab the whole sequence as ready-to-paste copy — no lead, no DB, no auth:
 curl "https://dr-fry-sequencerr.vercel.app/api/sequence-export?format=md"
 # plain text
 curl "https://dr-fry-sequencerr.vercel.app/api/sequence-export?format=txt"
-# structured JSON (default) — or one sequence: &sequenceId=founding-outreach
+# structured JSON (default) — or one sequence: &sequenceId=drfry-founding
 curl "https://dr-fry-sequencerr.vercel.app/api/sequence-export"
 ```
 Every email comes out with tool-agnostic merge tags — `{{first_name}}`,
@@ -145,7 +149,8 @@ capture the lead, then `POST` it here.
 
 Use **`/api/capture-lead`** — it's built for public site forms (CORS is open to
 any origin, so it works from a Base44 domain with no extra config). Pass
-`enroll: true` to start the full `founding-outreach` sequence:
+`enroll: true` to start the full sequence (with no `sequenceId` it uses this
+tenant's default, `<tenant>-founding`):
 
 ```js
 // Run this from the Base44 form's submit action (or a Base44 backend function).

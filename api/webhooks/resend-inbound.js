@@ -3,7 +3,7 @@
 //
 // Setup (see README): in Resend → Webhooks, add an endpoint pointing here with
 // the event type `email.received`, and add the MX record for your receiving
-// subdomain (e.g. reply.drfry.nl). Set REPLY_TO to an address on that subdomain.
+// subdomain (e.g. reply.<your-domain>). Set REPLY_TO to an address on it.
 //
 // Node.js classic (req, res) handler. bodyParser disabled for signature checks.
 import { findLeadByEmail, stopEnrollmentsForEmail, logEvent } from '../../lib/db.js';
@@ -12,7 +12,9 @@ import { sendEmail } from '../../lib/resend.js';
 
 export const config = { runtime: 'nodejs', api: { bodyParser: false } };
 
-const OUTLOOK = process.env.FORWARD_TO || 'jesse@drfry.nl';
+// Where replies get forwarded (your mailbox). Set FORWARD_TO per deployment —
+// no brand default, so a misconfigured deployment never forwards to the wrong inbox.
+const OUTLOOK = process.env.FORWARD_TO || '';
 
 async function readRawBody(req) {
   if (typeof req.body === 'string') return req.body;
@@ -65,20 +67,25 @@ export default async function handler(req, res) {
     const subject = data.subject || '(no subject)';
     if (!sender) { res.status(200).json({ ok: true, skipped: 'no-sender' }); return; }
 
-    // 1. Stop the sequence for this lead — works from the webhook alone.
-    await stopEnrollmentsForEmail(sender, 'replied');
+    // 1. Stop any active sequence for this sender — returns how many were stopped.
+    const stopped = await stopEnrollmentsForEmail(sender, 'replied');
     const lead = await findLeadByEmail(sender);
     await logEvent({ leadId: lead ? lead.id : null, email: sender, type: 'replied', meta: { subject } });
 
     // 2. Fetch the body, then forward to Outlook so you see and can answer it.
     const body = await fetchReceivedBody(data.email_id);
     const who = lead ? (lead.name || sender) + (lead.org ? ' · ' + lead.org : '') : sender;
+    const statusLine = !lead
+      ? `${sender} replied, but is not a lead in the pipeline — nothing to stop.`
+      : stopped > 0
+        ? `${who} replied — their active sequence has been stopped automatically.`
+        : `${who} replied. No active sequence was running, so nothing was stopped.`;
     try {
       await sendEmail({
         to: OUTLOOK,
         subject: `↩ Reply from ${sender}: ${subject}`,
         text:
-          `${who} replied to your outreach — their sequence has been stopped automatically.\n\n` +
+          `${statusLine}\n\n` +
           `———\nFrom: ${data.from}\nSubject: ${subject}\n\n` +
           (body || '[Body not retrieved — open this message in the Resend dashboard → Emails → Receiving.]'),
         replyTo: sender, // answering the forward goes straight back to the lead
