@@ -20,10 +20,27 @@ your Outlook, stops on reply/bounce/unsubscribe, and tracks clicks.
 | `api/webhooks/resend-inbound.js` | A reply → stop sequence **and** forward to your Outlook. |
 | `api/unsubscribe.js` | The opt-out link in every email footer. |
 | `api/leads.js` | `GET /api/leads` — read live pipeline state (for the dashboard). |
+| `api/sequence-export.js` | `GET /api/sequence-export` — plug-and-play export of the full sequence(s) with merge tags, as JSON / Markdown / plain text. |
 | `lib/sequences.js` | Your sequences + copy. Edit here to change cadence/wording. |
 
 Default sequence `founding-outreach`: **Day 0** intro → **Day 3** case study →
 **Day 7** ROI → **Day 14** break-up. Change it in `lib/sequences.js`.
+
+### Export the sequence (plug & play)
+Grab the whole sequence as ready-to-paste copy — no lead, no DB, no auth:
+```bash
+# Markdown (nice to read / paste into a doc)
+curl "https://dr-fry-sequencerr.vercel.app/api/sequence-export?format=md"
+# plain text
+curl "https://dr-fry-sequencerr.vercel.app/api/sequence-export?format=txt"
+# structured JSON (default) — or one sequence: &sequenceId=founding-outreach
+curl "https://dr-fry-sequencerr.vercel.app/api/sequence-export"
+```
+Every email comes out with tool-agnostic merge tags — `{{first_name}}`,
+`{{company}}`, `{{role}}`, `{{unsubscribe_url}}` — so you can drop it straight
+into Instantly, Smartlead, Lemlist, Mailchimp, or hand it to a colleague. The
+copy is read live from `lib/sequences.js`, so the export never drifts from what
+actually sends.
 
 ## Deploy (≈20 min)
 
@@ -117,6 +134,49 @@ curl "https://your-app.vercel.app/api/cron/tick?key=YOUR_CRON_SECRET"
 ```
 You should receive step 0. Reply to it → you get the forward in Outlook and the
 sequence stops.
+
+## Connecting a Base44 (or any) website
+
+This backend runs the whole sequencing engine — scheduled sends, stop-on-reply,
+reply-forwarding, bounce/complaint/unsubscribe handling. A website doesn't run
+any of that; it only needs to **hand a lead to this backend**, and the automation
+takes over. So a Base44 site connects exactly like the marketing site does:
+capture the lead, then `POST` it here.
+
+Use **`/api/capture-lead`** — it's built for public site forms (CORS is open to
+any origin, so it works from a Base44 domain with no extra config). Pass
+`enroll: true` to start the full `founding-outreach` sequence:
+
+```js
+// Run this from the Base44 form's submit action (or a Base44 backend function).
+await fetch('https://dr-fry-sequencerr.vercel.app/api/capture-lead', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email,                 // required
+    name,                  // optional
+    org,                   // optional — company
+    role,                  // optional
+    phone,                 // optional
+    note,                  // optional
+    source: 'base44-site', // shows up on the lead + notification
+    tenant: 'drfry',       // keep Dr. Fry leads off FahCel on the shared DB
+    enroll: true,          // ← start the full sequence. Omit for capture-only.
+  }),
+});
+```
+
+That's the entire integration. Once the lead is in, `api/cron/tick.js` sends
+Day 0 → 3 → 7 → 14 automatically, and a reply / bounce / unsubscribe stops the
+sequence on its own — no website involvement.
+
+- **`enroll: true`** = cold-outreach sequence starts immediately (Day 0 goes out
+  on the next cron tick). Leave it off for a contact/preorder form where the
+  person contacted *you* and shouldn't get cold outreach — the lead is still
+  captured and you're notified.
+- Prefer to call from a **Base44 backend function** rather than the browser if you
+  ever want to keep the request server-side; the endpoint accepts either.
+- To read the pipeline back into Base44, `GET /api/leads?tenant=drfry`.
 
 ## Connecting the dashboard
 The dashboard's **Add cold outreach lead** button can `POST /api/enroll` to start
