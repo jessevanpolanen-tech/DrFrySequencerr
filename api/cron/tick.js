@@ -44,13 +44,14 @@ export default async function handler(req, res) {
       const lead = await findLeadByEmail(en.email);
       if (!lead) { await advanceEnrollment(en.id, { stepIndex: en.step_index, nextDueAt: null, status: 'paused' }); continue; }
 
-      const { stepId, subject, text } = renderStep(seq, en.step_index, lead, backendBase);
+      const { stepId, subject, text, html } = renderStep(seq, en.step_index, lead, backendBase);
 
       try {
         const sent = await sendEmail({
           to: en.email,
           subject,
           text,
+          html,
           tags: [
             { name: 'enrollment', value: en.id },
             { name: 'sequence', value: en.sequence_id },
