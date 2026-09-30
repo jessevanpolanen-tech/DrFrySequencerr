@@ -10,6 +10,7 @@
 import { dueEnrollments, advanceEnrollment, findLeadByEmail, logEvent } from '../../lib/db.js';
 import { getSequence, dueAtForStep, renderStep } from '../../lib/sequences.js';
 import { sendEmail } from '../../lib/resend.js';
+import { renderStepHtml } from '../../lib/email-layout.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -47,10 +48,12 @@ export default async function handler(req, res) {
       const { stepId, subject, text } = renderStep(seq, en.step_index, lead, backendBase);
 
       try {
+        const html = await renderStepHtml(text);
         const sent = await sendEmail({
           to: en.email,
           subject,
           text,
+          html,
           tags: [
             { name: 'enrollment', value: en.id },
             { name: 'sequence', value: en.sequence_id },
