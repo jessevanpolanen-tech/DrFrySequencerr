@@ -37,6 +37,7 @@ lead with `leads.intel` → `<tenant>-signal` sequence. Full doc:
 `docs/LEAD-INTELLIGENCE.md`. Rules that hold it together:
 - Tenant is **required** on every intel call and must have an ICP in
   `lib/intel/icp.js`. Never default it from `TENANT`.
+- **Hobby plan: max 12 serverless functions per deployment** (10 existed before intel). Over the cap the deploy fails for every brand. All intel routes are one dynamic function, `api/intel/[action].js`, dispatching to `lib/intel/routes/`. Add routes there, never as new files under `api/`. `npm test` enforces the cap.
 - `/api/intel/*` refuse without `INTEL_SECRET`. They spend credits and return
   scraped contact data, unlike the open `/api/leads`.
 - Nothing in `lib/intel` sends email or enrolls automatically. Keep it that way.

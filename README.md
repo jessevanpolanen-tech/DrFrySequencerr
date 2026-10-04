@@ -23,7 +23,7 @@ your Outlook, stops on reply/bounce/unsubscribe, and tracks clicks.
 | `api/sequence-export.js` | `GET /api/sequence-export` — plug-and-play export of the full sequence(s) with merge tags, as JSON / Markdown / plain text. |
 | `lib/sequences.js` | Your sequences + copy. Edit here to change cadence/wording. |
 | `db/intel-schema.sql` | `prospects` table + `leads.intel`, for lead intelligence. Run once. |
-| `api/intel/*`, `api/cron/intel.js`, `lib/intel/*` | **Lead intelligence**: SerpApi discovery → crawl → enrichment → Claude qualification + grounded opener → verified email → human promote into a `<tenant>-signal` sequence. See [`docs/LEAD-INTELLIGENCE.md`](docs/LEAD-INTELLIGENCE.md). |
+| `api/intel/[action].js`, `lib/intel/*` | **Lead intelligence**: SerpApi discovery → crawl → enrichment → Claude qualification + grounded opener → verified email → human promote into a `<tenant>-signal` sequence. See [`docs/LEAD-INTELLIGENCE.md`](docs/LEAD-INTELLIGENCE.md). |
 
 Sequences are **namespaced by brand** in `lib/sequences.js` (this one codebase
 serves every brand's deployment): `drfry-founding`, `fahcel-founding`,

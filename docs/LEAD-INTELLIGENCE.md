@@ -6,7 +6,7 @@ write to, and why now, and only then lets it into a sequence.
 ```
 POST /api/intel/discover   SerpApi search → entity resolver → prospects (discovered)
         │
-POST /api/intel/process    (or the daily /api/cron/intel), one stage at a time:
+POST /api/intel/process    (or the daily /api/intel/cron), one stage at a time:
         │   discovered ─ crawl site (robots-aware), find website for LinkedIn-only hits
         │   crawled    ─ enrichment waterfall (Apollo → Hunter → site emails) + news signals
         │   enriched   ─ rule score + Claude qualification  → rejected | qualified

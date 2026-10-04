@@ -2,10 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "crons": [
     { "path": "/api/cron/tick", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/intel", "schedule": "0 6 * * *" }
+    { "path": "/api/intel/cron", "schedule": "0 6 * * *" }
   ],
   "functions": {
-    "api/intel/*.js": { "maxDuration": 60 },
-    "api/cron/intel.js": { "maxDuration": 60 }
+    "api/intel/*.js": { "maxDuration": 60 }
   }
 }

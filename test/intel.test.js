@@ -147,3 +147,52 @@ test('verifyEmail rejects bad syntax without any network call', async () => {
   assert.equal((await verifyEmail('not-an-email')).status, 'invalid');
   assert.equal((await verifyEmail('')).status, 'invalid');
 });
+
+// ── Deployment guards ───────────────────────────────────────────────
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
+
+function apiFunctions(dir = 'api') {
+  return readdirSync(dir).flatMap((f) => {
+    const p = join(dir, f);
+    return statSync(p).isDirectory() ? apiFunctions(p) : /\.js$/.test(f) ? [p] : [];
+  });
+}
+
+test('api/ stays within the Hobby plan cap of 12 serverless functions', () => {
+  // Over the cap, Vercel rejects the whole deployment for every brand
+  // (exceeded_serverless_functions_per_deployment). Add intel routes to
+  // api/intel/[action].js instead of new files.
+  const fns = apiFunctions();
+  assert.ok(fns.length <= 12, `${fns.length} functions: ${fns.join(', ')}`);
+});
+
+test('intel dispatcher routes known actions and 404s the rest', async () => {
+  delete process.env.INTEL_SECRET;
+  const { default: handler } = await import('../api/intel/[action].js');
+  const call = async (action, method = 'GET') => {
+    const out = { headers: {} };
+    const res = {
+      setHeader: (k, v) => { out.headers[k] = v; },
+      status(code) { out.code = code; return this; },
+      json(b) { out.body = b; },
+      end() {},
+    };
+    await handler({ method, query: { action }, headers: {} }, res);
+    return out;
+  };
+  for (const a of ['discover', 'process', 'prospects', 'promote']) {
+    assert.equal((await call(a)).code, 503, `${a} must refuse without INTEL_SECRET`);
+  }
+  assert.equal((await call('nope')).code, 404);
+  assert.equal((await call('constructor')).code, 404); // no prototype lookups
+});
+
+test('every cron path in vercel.json resolves to a real route', () => {
+  const { crons } = JSON.parse(readFileSync('vercel.json', 'utf8'));
+  for (const { path } of crons) {
+    const m = path.match(/^\/api\/intel\/([a-z]+)$/);
+    if (m) assert.match(readFileSync('api/intel/[action].js', 'utf8'), new RegExp(`\\b${m[1]}\\b`));
+    else assert.ok(statSync(`${path.slice(1)}.js`).isFile(), path);
+  }
+});
