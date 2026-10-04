@@ -28,6 +28,22 @@ Everything brand-specific is env-driven — `FROM_EMAIL`, `FROM_NAME`, `REPLY_TO
 namespaced by brand in `lib/sequences.js` (`drfry-founding`, `fahcel-founding`,
 `fahcel-playbook`); a caller that names no `sequenceId` gets `<tenant>-founding`.
 
+## Lead intelligence (`lib/intel/`, `api/intel/`)
+
+Upstream of the sequencer: SerpApi discovery → prospects (own table, never
+`leads`) → crawl → enrichment waterfall → rule + Claude qualification →
+verified contact + grounded opener → **human** `POST /api/intel/promote` →
+lead with `leads.intel` → `<tenant>-signal` sequence. Full doc:
+`docs/LEAD-INTELLIGENCE.md`. Rules that hold it together:
+- Tenant is **required** on every intel call and must have an ICP in
+  `lib/intel/icp.js`. Never default it from `TENANT`.
+- `/api/intel/*` refuse without `INTEL_SECRET`. They spend credits and return
+  scraped contact data, unlike the open `/api/leads`.
+- Nothing in `lib/intel` sends email or enrolls automatically. Keep it that way.
+- Website/news text is untrusted model input: keep it fenced in the prompt and
+  the output schema-constrained.
+- Tests: `npm test` (node's runner, no network/DB).
+
 ## ⚠️ Cutover / pending deploy actions
 
 Do these when this merge deploys (order matters — code first, then migrations):
