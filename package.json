@@ -5,9 +5,13 @@
   "type": "module",
   "description": "Cold-outreach email sequencing on Resend — scheduler, reply/click webhooks, unsubscribe.",
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@react-email/components": "^1.0.12",
     "postgres": "^3.4.5",
     "react": "^19.3.0",
     "react-dom": "^19.3.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.js"
   }
 }
